@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cstdlib>
 
 #include "genomegen.hpp"
 #include "tclap/CmdLine.h"
@@ -95,14 +96,28 @@ cmd_args parse_args(int argc, char** argv){
 string generate_ref_genome(string id, int num_chroms, unsigned long chrom_size){
 	string file_name = "ref_" + id + ".txt";
 	char *c_file_name = (char*)file_name.c_str();
-	ifstream infile;
-	infile.open(c_file_name);
+	ofstream outfile;
+	outfile.open(c_file_name);
 	string line;
-	if (infile.is_open()){
-    	while (getline (infile, line)){
-      		cout << line << '\n';
+	if (outfile.is_open()){
+		outfile<<">" + id;
+    	for (int i = 0; i < num_chroms; i++){
+    		string num = static_cast<ostringstream*>( 
+    			&(ostringstream() << i) )->str();
+    		outfile<<"\n>chromosome_" + num;
+    		for (unsigned long j = 0; j < chrom_size; j++){
+    			if (j % 80 == 0)
+    				outfile<<"\n";
+    			switch(rand() % 4){
+    				case 0: outfile<<"A"; break;
+    				case 1: outfile<<"C"; break;
+    				case 2: outfile<<"G"; break;
+    				case 3: outfile<<"T"; break;
+    			}
+    		}
     	}
-    	infile.close();
+    	outfile<<"\n";
+    	outfile.close();
   	}
 
 	return file_name;
