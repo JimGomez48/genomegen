@@ -7,7 +7,9 @@
 #include "tclap/CmdLine.h"
 
 using namespace std;
+using namespace genome_gen;
 
+namespace genome_gen{
 
 cmd_args parse_args(int argc, char** argv){
 	struct cmd_args args;
@@ -121,6 +123,34 @@ string generate_ref_genome(string id, int num_chroms, unsigned long chrom_size){
   	}
 
 	return file_name;
+}
+
+void generate_copies(vector<char>* genome){
+	// TODO
+}
+
+void generate_inversions(vector<char>* genome){
+	// TODO
+}
+
+void generate_insertions(vector<char>* genome){
+	// TODO
+}
+
+void generate_deletions(vector<char>* genome){
+	// TODO
+}
+
+void generate_snps(vector<char>* genome);
+	// TODO
+}
+
+void generate_alus(vector<char>* genome){
+	// TODO
+}
+
+void generate_strs(vector<char>* genome){
+	// TODO
 }
 
 int main(int argc, char** argv){
