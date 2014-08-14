@@ -1,0 +1,6 @@
+genomegen
+*.tab
+*.so
+*.lo
+*.o
+*.txt
