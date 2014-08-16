@@ -17,8 +17,21 @@ static const string PRIV_PRE = "private_";
 static const string READS_PRE = "reads_";
 static const string ANS_PRE = "ans_";
 
-cmd_args parse_args(int argc, char** argv){
-	struct cmd_args args;
+struct cmd_args{
+	string genome_id;
+	int num_chroms;
+	unsigned long chrom_size;
+	char scale;
+} args;
+
+void print_args(){
+	cout<<"\ngenome-ID:\t"<<args.genome_id<<endl;
+	cout<<"num-chroms:\t"<<args.num_chroms<<endl;
+	cout<<"chrom-size:\t"<<args.chrom_size<<endl;
+	cout<<"scale:\t"<<args.scale<<endl;
+}
+
+void parse_args(int argc, char** argv){
 	try{
 		// Define Command line parser and description
 		TCLAP::CmdLine cmd(
@@ -55,7 +68,8 @@ cmd_args parse_args(int argc, char** argv){
 		);
 		TCLAP::ValueArg<char> scale(
 			"s", "scale",
-			"The number of chromosomes to generate for the genome",
+			"The amount to scale chromosome-size by. k: 1-thousand, m: "
+			"1-million, b: 1-billion. By default, scale is 1-thousand (k).",
 			false,
 			'k',
 			"k, m, b"
@@ -92,8 +106,6 @@ cmd_args parse_args(int argc, char** argv){
 				"--scale"
 			);
         }
-		
-		return args;
 	}
 	catch(TCLAP::ArgException &e){
 		cout<<"ARG PARSE FAILURE:\n\t"<<e.what()<<endl;
@@ -101,20 +113,34 @@ cmd_args parse_args(int argc, char** argv){
 	}
 }
 
-void write_ref_genome(
-	string id, int num_chroms, unsigned long chrom_size, vector<char>& genome)
-{
-	string file_name = REF_PRE + id + ".txt";
+
+char** create_genome_container(){
+	char** genome = new char*[args.num_chroms];
+	for (int i = 0; i < args.num_chroms; i++){
+		genome[i] = new char[args.chrom_size];
+	}
+	return genome;
+}
+
+void cleanup_genome_container(char ** genome){
+	for (int i = 0; i < args.num_chroms; i++){
+		delete genome[i];
+	}
+	delete genome;
+}
+
+void write_ref_genome(char** genome){
+	string file_name = REF_PRE + args.genome_id + ".txt";
 	ofstream outfile((char*)file_name.c_str());
 	char base;
 	if (outfile.is_open()){
 		cout<<"Generating reference genome..."<<endl;
-		outfile<<">" + id;
-    	for (unsigned long i = 0; i < num_chroms; i++){
-    		string num = static_cast<ostringstream*>( 
+		outfile<<">" + args.genome_id;
+    	for (int i = 0; i < args.num_chroms; i++){
+    		string chrom_num = static_cast<ostringstream*>( 
     			&(ostringstream() << i) )->str();
-    		outfile<<"\n>chromosome_" + num;
-    		for (unsigned long j = 0; j < chrom_size; j++){
+    		outfile<<"\n>chromosome_" + chrom_num;
+    		for (unsigned long j = 0; j < args.chrom_size; j++){
     			if (j % 80 == 0)
     				outfile<<'\n';
     			switch(rand() % 4){
@@ -123,9 +149,8 @@ void write_ref_genome(
     				case 2: base = 'G'; break;
     				case 3: base = 'T'; break;
     			}
+    			genome[i][j] = base;
     			outfile<<base;
-    			// genome.push_back(base);
-    			genome[i * chrom_size + j] = base;
     		}
     	}
     	outfile<<"\n";
@@ -133,68 +158,70 @@ void write_ref_genome(
   	}
 }
 
-void write_private_genome(string id, vector<char>& genome){
-	string file_name = PRIV_PRE + id + ".txt";
+void write_private_genome(char** genome){
+	string file_name = PRIV_PRE + args.genome_id + ".txt";
+	cout<<"private filename: "<<file_name<<endl;
 	ofstream outfile((char*)file_name.c_str());
 	if (outfile.is_open()){
 		cout<<"Writing private genome..."<<endl;
-		outfile<<">" + id;
-		for (unsigned long i = 0; i < genome.size(); i++){
-			if (i % 80 == 0)
-				outfile<<'\n';
-			outfile<<genome[i];
+		outfile<<">" + args.genome_id;
+		for (int i = 0; i < args.num_chroms; i++){
+			string chrom_num = static_cast<ostringstream*>( 
+    			&(ostringstream() << i) )->str();
+			outfile<<"\n>chromosome_" + chrom_num;
+			for (unsigned long j = 0; j < args.chrom_size; j++){
+				// cout<<"in loop 2"<<endl;
+				if (j % 80 == 0)
+					outfile<<'\n';
+				outfile<<genome[i][j];
+			}
 		}
 		outfile<<"\n";
 		outfile.close();
 	}
 }
 
-void write_reads(string id, vector<char>& genome){
-	string file_name = PRIV_PRE + id + ".txt";
+void write_reads(char** genome){
+	string file_name = READS_PRE + args.genome_id + ".txt";
 	ofstream outfile((char*)file_name.c_str());
+
+	outfile.close();
 	// TODO
 }
 
-void generate_copies(vector<char>& genome){
+void generate_copies(char** genome){
 	// TODO
 }
 
-void generate_inversions(vector<char>& genome){
+void generate_inversions(char** genome){
 	// TODO
 }
 
-void generate_insertions(vector<char>& genome){
+void generate_insertions(char** genome){
 	// TODO
 }
 
-void generate_deletions(vector<char>& genome){
+void generate_deletions(char** genome){
 	// TODO
 }
 
-void generate_snps(vector<char>& genome){
+void generate_snps(char** genome){
 	const float SNP_RATE = 0.003; // 0.3%
-	const unsigned long NUM_SNPS = (unsigned long)(genome.size() * SNP_RATE);
+	const unsigned long NUM_SNPS = 
+		(unsigned long)(args.num_chroms * args.chrom_size * SNP_RATE);
 	cout<<"Generating SNPs..."<<endl;
-	// cout<<"Num SNPs: "<<NUM_SNPS<<endl;
-	// cout<<"Size: "<<genome.size()<<endl;
 	for (unsigned long i = 0; i < NUM_SNPS; i++){
-		unsigned long index = rand_num() * genome.size();
-		// cout<<"Old: "<<genome[i];
-		// genome.at(index) = random_snp(genome[index]);
-		genome[index] = random_snp(genome[index]);
-		// cout<<" New: "<<genome[i]<<endl;
+		int chrom_num = rand_num() * args.num_chroms;
+		unsigned long index = rand_num() * args.chrom_size;
+		genome[chrom_num][index] = random_snp(genome[chrom_num][index]);
 	}
 }
 
-void generate_alus(vector<char>& genome){
+void generate_alus(char** genome){
 	// TODO
 }
 
-void generate_strs(vector<char>& genome){
-	// TODO
-}
-
-void generate_reads(string id){
+void generate_strs(char** genome){
 	// TODO
 }
 
@@ -241,13 +268,18 @@ double rand_num(){
 
 int main(int argc, char** argv){
 	// initialize rand() and get args
-  	struct cmd_args args = parse_args(argc, argv);
+  	parse_args(argc, argv);
   	srand(time(NULL));
 	// generate reference genome and mutations
-  	vector<char> genome(args.num_chroms * args.chrom_size);
-  	write_ref_genome(args.genome_id, args.num_chroms, args.chrom_size, genome);
+  	// vector<char> genome(args.num_chroms * args.chrom_size);
+  	char** genome = create_genome_container();
+
+  	write_ref_genome(genome);
   	generate_snps(genome);
-  	write_private_genome(args.genome_id, genome);
+  	write_private_genome(genome);
+  	// write_reads(genome);
+  	
+  	cleanup_genome_container(genome);
 
 	return 0;
 }

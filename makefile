@@ -1,5 +1,5 @@
 all:
-	g++ genomegen.cpp -o genomegen
+	g++ -std=c++11 genomegen.cpp -o genomegen
 
 clean:
 	rm --force genomegen *.tab.* *.o *.lo test *.so*
