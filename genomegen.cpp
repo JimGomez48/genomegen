@@ -101,31 +101,58 @@ cmd_args parse_args(int argc, char** argv){
 	}
 }
 
-void generate_ref_genome(string id, int num_chroms, unsigned long chrom_size, vector<char>& genome){
+void write_ref_genome(
+	string id, int num_chroms, unsigned long chrom_size, vector<char>& genome)
+{
 	string file_name = REF_PRE + id + ".txt";
-	char *c_file_name = (char*)file_name.c_str();
-	ofstream outfile(c_file_name);
+	ofstream outfile((char*)file_name.c_str());
+	char base;
 	if (outfile.is_open()){
 		cout<<"Generating reference genome..."<<endl;
 		outfile<<">" + id;
-    	for (int i = 0; i < num_chroms; i++){
+    	for (unsigned long i = 0; i < num_chroms; i++){
     		string num = static_cast<ostringstream*>( 
     			&(ostringstream() << i) )->str();
     		outfile<<"\n>chromosome_" + num;
     		for (unsigned long j = 0; j < chrom_size; j++){
     			if (j % 80 == 0)
-    				outfile<<"\n";
+    				outfile<<'\n';
     			switch(rand() % 4){
-    				case 0: outfile<<'A'; genome[i * chrom_size + j] = 'A'; break;
-    				case 1: outfile<<'C'; genome[i * chrom_size + j] = 'A'; break;
-    				case 2: outfile<<'G'; genome[i * chrom_size + j] = 'A'; break;
-    				case 3: outfile<<'T'; genome[i * chrom_size + j] = 'A'; break;
+    				case 0: base = 'A'; break;
+    				case 1: base = 'C'; break;
+    				case 2: base = 'G'; break;
+    				case 3: base = 'T'; break;
     			}
+    			outfile<<base;
+    			// genome.push_back(base);
+    			genome[i * chrom_size + j] = base;
     		}
     	}
     	outfile<<"\n";
     	outfile.close();
   	}
+}
+
+void write_private_genome(string id, vector<char>& genome){
+	string file_name = PRIV_PRE + id + ".txt";
+	ofstream outfile((char*)file_name.c_str());
+	if (outfile.is_open()){
+		cout<<"Writing private genome..."<<endl;
+		outfile<<">" + id;
+		for (unsigned long i = 0; i < genome.size(); i++){
+			if (i % 80 == 0)
+				outfile<<'\n';
+			outfile<<genome[i];
+		}
+		outfile<<"\n";
+		outfile.close();
+	}
+}
+
+void write_reads(string id, vector<char>& genome){
+	string file_name = PRIV_PRE + id + ".txt";
+	ofstream outfile((char*)file_name.c_str());
+	// TODO
 }
 
 void generate_copies(vector<char>& genome){
@@ -146,10 +173,16 @@ void generate_deletions(vector<char>& genome){
 
 void generate_snps(vector<char>& genome){
 	const float SNP_RATE = 0.003; // 0.3%
+	const unsigned long NUM_SNPS = (unsigned long)(genome.size() * SNP_RATE);
 	cout<<"Generating SNPs..."<<endl;
-	for (unsigned long i = 0; i < genome.size() * SNP_RATE; i++){
-		unsigned long index = rand_num() * 3000000000ul;
-		genome[i] = random_snp(genome[i]);
+	// cout<<"Num SNPs: "<<NUM_SNPS<<endl;
+	// cout<<"Size: "<<genome.size()<<endl;
+	for (unsigned long i = 0; i < NUM_SNPS; i++){
+		unsigned long index = rand_num() * genome.size();
+		// cout<<"Old: "<<genome[i];
+		// genome.at(index) = random_snp(genome[index]);
+		genome[index] = random_snp(genome[index]);
+		// cout<<" New: "<<genome[i]<<endl;
 	}
 }
 
@@ -210,13 +243,11 @@ int main(int argc, char** argv){
 	// initialize rand() and get args
   	struct cmd_args args = parse_args(argc, argv);
   	srand(time(NULL));
-  	// initialize container for in-memory genome
-  	vector<char> genome;
-	genome.reserve(args.num_chroms * args.chrom_size);
 	// generate reference genome and mutations
-  	generate_ref_genome(
-  		args.genome_id, args.num_chroms, args.chrom_size, genome);
+  	vector<char> genome(args.num_chroms * args.chrom_size);
+  	write_ref_genome(args.genome_id, args.num_chroms, args.chrom_size, genome);
   	generate_snps(genome);
+  	write_private_genome(args.genome_id, genome);
 
 	return 0;
 }
