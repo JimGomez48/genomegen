@@ -3,6 +3,7 @@
 #include <string>
 #include <cstdlib>
 #include <stdexcept>
+#include <vector>
 
 #include "genomegen.hpp"
 #include "tclap/CmdLine.h"
@@ -88,24 +89,25 @@ void parse_args(int argc, char** argv){
 		// print arg values to user, if valid
 		cout<<"\ngenome-ID:\t"<<args.genome_id<<endl;
     	cout<<"num-chroms:\t"<<args.num_chroms<<endl;
-    	if (args.scale == 'k'){
-        	cout<<"chrom-size:\t"<<args.chrom_size<<" thousand"<<endl;
-        	args.chrom_size *= 1000;
-        }
-    	else if (args.scale == 'm'){
-        	cout<<"chrom-size:\t"<<args.chrom_size<<" million"<<endl;
-        	args.chrom_size *= 1000000;
-        }
-    	else if (args.scale == 'b'){
-        	cout<<"chrom-size:\t"<<args.chrom_size<<" billion"<<endl;
-        	args.chrom_size *= 1000000000;
-        }
-        else{
-        	throw TCLAP::ArgException(
-				"Invalid argument value. Choices <k, m, b>",
-				"--scale"
-			);
-        }
+    	switch(args.scale){
+    		case 'k': 
+    			cout<<"chrom-size:\t"<<args.chrom_size<<" thousand"<<endl;
+        		args.chrom_size *= 1000;
+    			break;
+    		case 'm': 
+    			cout<<"chrom-size:\t"<<args.chrom_size<<" million"<<endl;
+        		args.chrom_size *= 1000000;
+    			break;
+    		case 'b': 
+    			cout<<"chrom-size:\t"<<args.chrom_size<<" billion"<<endl;
+        		args.chrom_size *= 1000000000;
+    			break;
+    		default:
+    			throw TCLAP::ArgException(
+					"Invalid argument value. Choices <k, m, b>",
+					"--scale"
+				);
+    	}
 	}
 	catch(TCLAP::ArgException &e){
 		cout<<"ARG PARSE FAILURE:\n\t"<<e.what()<<endl;
@@ -113,23 +115,7 @@ void parse_args(int argc, char** argv){
 	}
 }
 
-
-char** create_genome_container(){
-	char** genome = new char*[args.num_chroms];
-	for (int i = 0; i < args.num_chroms; i++){
-		genome[i] = new char[args.chrom_size];
-	}
-	return genome;
-}
-
-void cleanup_genome_container(char ** genome){
-	for (int i = 0; i < args.num_chroms; i++){
-		delete genome[i];
-	}
-	delete genome;
-}
-
-void write_ref_genome(char** genome){
+void write_ref_genome(vector<vector<char>>& genome){
 	string file_name = REF_PRE + args.genome_id + ".txt";
 	ofstream outfile((char*)file_name.c_str());
 	char base;
@@ -158,9 +144,8 @@ void write_ref_genome(char** genome){
   	}
 }
 
-void write_private_genome(char** genome){
+void write_private_genome(vector<vector<char>>& genome){
 	string file_name = PRIV_PRE + args.genome_id + ".txt";
-	cout<<"private filename: "<<file_name<<endl;
 	ofstream outfile((char*)file_name.c_str());
 	if (outfile.is_open()){
 		cout<<"Writing private genome..."<<endl;
@@ -170,7 +155,6 @@ void write_private_genome(char** genome){
     			&(ostringstream() << i) )->str();
 			outfile<<"\n>chromosome_" + chrom_num;
 			for (unsigned long j = 0; j < args.chrom_size; j++){
-				// cout<<"in loop 2"<<endl;
 				if (j % 80 == 0)
 					outfile<<'\n';
 				outfile<<genome[i][j];
@@ -181,7 +165,7 @@ void write_private_genome(char** genome){
 	}
 }
 
-void write_reads(char** genome){
+void write_reads(vector<vector<char>>& genome){
 	string file_name = READS_PRE + args.genome_id + ".txt";
 	ofstream outfile((char*)file_name.c_str());
 
@@ -189,23 +173,16 @@ void write_reads(char** genome){
 	// TODO
 }
 
-void generate_copies(char** genome){
+
+void generate_insertions(vector<vector<char>>& genome){
 	// TODO
 }
 
-void generate_inversions(char** genome){
+void generate_deletions(vector<vector<char>>& genome){
 	// TODO
 }
 
-void generate_insertions(char** genome){
-	// TODO
-}
-
-void generate_deletions(char** genome){
-	// TODO
-}
-
-void generate_snps(char** genome){
+void generate_snps(vector<vector<char>>& genome){
 	const float SNP_RATE = 0.003; // 0.3%
 	const unsigned long NUM_SNPS = 
 		(unsigned long)(args.num_chroms * args.chrom_size * SNP_RATE);
@@ -217,13 +194,22 @@ void generate_snps(char** genome){
 	}
 }
 
-void generate_alus(char** genome){
-	// TODO
-}
+// void generate_copies(char** genome){
+// 	// TODO
+// }
 
-void generate_strs(char** genome){
-	// TODO
-}
+// void generate_inversions(char** genome){
+// 	// TODO
+// }
+
+
+// void generate_alus(char** genome){
+// 	// TODO
+// }
+
+// void generate_strs(char** genome){
+// 	// TODO
+// }
 
 char random_snp(char base){
 	switch(base){
@@ -256,7 +242,9 @@ char random_snp(char base){
 			}
 			break;
 		default: 
-			throw invalid_argument("Valid values: {'A', 'C', 'G', 'T'}");
+			string msg = "Valid values: {'A', 'C', 'G', 'T'}. Given: " + base;
+			throw invalid_argument(msg);
+			// throw invalid_argument("Valid values: {'A', 'C', 'G', 'T'}");
 	}
 }
 
@@ -271,15 +259,15 @@ int main(int argc, char** argv){
   	parse_args(argc, argv);
   	srand(time(NULL));
 	// generate reference genome and mutations
-  	// vector<char> genome(args.num_chroms * args.chrom_size);
-  	char** genome = create_genome_container();
+  	vector<vector<char>> genome(args.num_chroms);
+	for (int i = 0; i < args.num_chroms; i++){
+		genome[i] = vector<char>(args.chrom_size);
+	}
 
   	write_ref_genome(genome);
   	generate_snps(genome);
   	write_private_genome(genome);
   	// write_reads(genome);
   	
-  	cleanup_genome_container(genome);
-
 	return 0;
 }
