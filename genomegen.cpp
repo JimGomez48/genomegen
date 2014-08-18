@@ -23,6 +23,9 @@ struct cmd_args{
 	int num_chroms;
 	unsigned long chrom_size;
 	char scale;
+	float error_rate;
+	float garbage_rate;
+	float coverage;
 } args;
 
 void print_args(){
@@ -86,6 +89,8 @@ void parse_args(int argc, char** argv){
 		args.num_chroms = num_chroms.getValue();
 		args.chrom_size = chrom_size.getValue();
 		args.scale = scale.getValue();
+		args.error_rate = 0.0;
+		args.garbage_rate = 0.0;
 		// print arg values to user, if valid
 		cout<<"\ngenome-ID:\t"<<args.genome_id<<endl;
     	cout<<"num-chroms:\t"<<args.num_chroms<<endl;
@@ -168,9 +173,18 @@ void write_private_genome(vector<vector<char>>& genome){
 void write_reads(vector<vector<char>>& genome){
 	string file_name = READS_PRE + args.genome_id + ".txt";
 	ofstream outfile((char*)file_name.c_str());
-
+	cout<<"Generating reads..."<<endl;
+	if (outfile.is_open()){
+		string read1 = "";
+		string read2 = "";
+		// TODO fix everything
+		for (unsigned long i = 0; i < 50; i++){
+			unsigned long index1 = 0;
+			unsigned long index2 = 0;
+			int gap = 0;
+		}
+	}
 	outfile.close();
-	// TODO
 }
 
 
