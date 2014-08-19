@@ -23,8 +23,10 @@ void generate_snps(vector<vector<char>>& genome);
 // void generate_alus(char** genome);
 // void generate_strs(char** genome);
 
+string get_slice(int chromosome, 
+	unsigned long start, unsigned long end, vector<vector<char>>& genome);
 char random_snp(char base);
-double rand_num();
+double random();
 
 };
 
