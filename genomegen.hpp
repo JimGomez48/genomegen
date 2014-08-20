@@ -5,7 +5,7 @@
 #include <vector>
 
 
-namespace genome_gen{
+namespace genome_gen {
 
 using namespace std;
 
@@ -25,8 +25,11 @@ void generate_snps(vector<char>& chromosome);
 // void generate_alus(vector<char>& chromosome);
 // void generate_strs(vector<char>& chromosome);
 
+string get_garbage_read();
 string get_slice(int chromosome, 
 	unsigned long start, unsigned long end, const vector<char>& genome);
+
+char random_allele();
 char random_snp(char base);
 double random();
 
