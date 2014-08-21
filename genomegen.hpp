@@ -29,6 +29,7 @@ string get_garbage_read();
 string get_slice(int chromosome, 
 	unsigned long start, unsigned long end, const vector<char>& genome);
 
+string random_alleles(unsigned int length);
 char random_allele();
 char random_snp(char base);
 double random();
