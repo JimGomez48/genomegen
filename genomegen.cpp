@@ -34,6 +34,8 @@ struct cmd_args{
 	unsigned int read_gap;
 	double read_error_rate;
 	double read_garbage_rate;
+	double snp_rate;
+	double indel_rate;
 } args;
 
 string ref_file_name;
@@ -138,6 +140,22 @@ void parse_args(int argc, char** argv){
 			0.0,
 			"float"
 		);
+		TCLAP::ValueArg<double> snp_rate(
+			"", "snp",
+			"The rate at which SNPs will be introduced into the mutated genome."
+			" Default: 0.003",
+			false,
+			0.003,
+			"float"
+		);
+		TCLAP::ValueArg<double> indel_rate(
+			"", "indel",
+			"The rate at which indels will be introduced into the mutated "
+			"genome. Default: 0.001",
+			false,
+			0.001,
+			"float"
+		);
 
 		// bind args to parser and parse
 		cmd.add(quiet);
@@ -150,6 +168,8 @@ void parse_args(int argc, char** argv){
 		cmd.add(read_gap);
 		cmd.add(read_error_rate);
 		cmd.add(read_garbage_rate);
+		cmd.add(snp_rate);
+		cmd.add(indel_rate);
 		cmd.parse(argc, argv);
 		if (coverage.getValue() < 0)
 			throw TCLAP::ArgParseException("value cannot be < 0", "coverage");
@@ -157,6 +177,10 @@ void parse_args(int argc, char** argv){
 			throw TCLAP::ArgParseException("out of valid range: [0, 1]", "read-error");
 		if (read_garbage_rate.getValue() < 0 || read_garbage_rate.getValue() > 1)
 			throw TCLAP::ArgParseException("out of valid range: [0, 1]", "read-garbage");
+		if (snp_rate.getValue() < 0 || snp_rate.getValue() > 1)
+			throw TCLAP::ArgParseException("out of valid range: [0, 1]", "snp");
+		if (indel_rate.getValue() < 0 || indel_rate.getValue() > 1)
+			throw TCLAP::ArgParseException("out of valid range: [0, 1]", "indel");
 
     	// determine scale factor
     	double factor;
@@ -178,6 +202,8 @@ void parse_args(int argc, char** argv){
 		args.read_error_rate 	= read_error_rate.getValue();
 		args.read_garbage_rate 	= read_garbage_rate.getValue();
     	args.genome_size 		= args.chrom_size * args.num_chroms;
+    	args.snp_rate 			= snp_rate.getValue();
+    	args.indel_rate 		= indel_rate.getValue();
 
     	// set file names
     	ref_file_name = REF_PRE + args.genome_id + SUFFIX;
@@ -226,6 +252,8 @@ void print_args(){
 	cout<<"read-gap:\t"<<args.read_gap<<" bp"<<endl;
 	cout<<"read-error:\t"<<args.read_error_rate<<endl;
 	cout<<"garbage-rate:\t"<<args.read_garbage_rate<<endl;
+	cout<<"snp-rate:\t"<<args.snp_rate<<endl;
+	cout<<"indel-rate:\t"<<args.indel_rate<<endl;
 	cout<<"================================="<<endl;
 }
 
@@ -286,21 +314,11 @@ void write_reads(vector<vector<char>>& genome){
 	ofstream outfile((char*)reads_file_name.c_str());
 	if (outfile.is_open()){
 		outfile<<'>'<<args.genome_id<<'\n';
-		// generate random errors for reads
-		unsigned long num_errors = args.genome_size * args.read_error_rate;
-		cout<<"#errors: "<<num_errors<<endl;
-		for (unsigned long i = 0; i < num_errors; i++){
-			unsigned int chrom_num = rand() % genome.size();
-			unsigned long index = 
-				(unsigned long)(random()*genome[chrom_num].size());
-			genome[chrom_num][index] = random_snp(genome[chrom_num][index]);
-			// genome[chrom_num][index] = '~';
-		}
 		// generate reads from genome
 		unsigned long num_reads = 
 			((args.coverage * args.genome_size) / args.read_length);
+		string read1, read2;
 		for (unsigned long i = 0; i < num_reads / 2; i++){
-			string read1, read2;
 			unsigned int chrom_num = rand() % genome.size();
 			unsigned int gap = 90 + (rand() % 20);
 			unsigned long index1 = (unsigned long)
@@ -313,6 +331,13 @@ void write_reads(vector<vector<char>>& genome){
 			else{
 				read1 = get_slice(
 					chrom_num, index1, index1 + args.read_length, genome[chrom_num]);
+				// introduce errors
+				for (unsigned int i = 0; i < read1.size(); i++){
+					if (random() < args.read_error_rate){
+						// read1[i] = random_snp(read[i]);
+						read1[i] = '~';
+					}
+				}
 			}
 			if (random() <= args.read_garbage_rate){
 				read2 = get_garbage_read();	
@@ -321,6 +346,13 @@ void write_reads(vector<vector<char>>& genome){
 			else{
 				read2 = get_slice(
 					chrom_num, index2, index2 + args.read_length, genome[chrom_num]);
+				// introduce errors
+				for (unsigned int i = 0; i < read2.size(); i++){
+					if (random() < args.read_error_rate){
+						read2[i] = random_snp(read2[i]);
+						// read2[i] = '~';
+					}
+				}
 			}
 			outfile<<read1<<','<<read2<<'\n';
 		}
@@ -335,33 +367,88 @@ void generate_mutations(vector<vector<char>>& genome){
 		outfile<<'>'<<args.genome_id<<'\n';
 	}
 	outfile.close();
-	for (int i = 0; i < genome.size(); i++){
+	generate_indels(genome);
+	generate_snps(genome);
+}
+
+void generate_indels(vector<vector<char>>& genome){
+	ofstream outfile((char*)ans_file_name.c_str(), ios::app);
+	if (outfile.is_open()){
 		if (!args.quiet)
-			cout<<"Generating mutations in chromosome: "<<i<<endl;
-		generate_insertions(genome[i]);
-		generate_deletions(genome[i]);
-		generate_snps(genome[i]);
+			cout<<"Generating Inserts..."<<endl;
+		outfile<<">INSERT\n";
+		for (unsigned int chrom = 0; chrom < genome.size(); chrom++){
+			if (!args.quiet)
+				cout<<"\tChromosome "<<chrom<<endl;
+			unsigned long num_inserts = 
+				(genome[chrom].size() * args.indel_rate) / 2;
+			vector<unsigned long> ins_indeces(num_inserts);
+			for (unsigned long j = 0; j < num_inserts; j++){
+				unsigned long index = random() * genome[chrom].size();
+				ins_indeces[j] = index;
+			}
+			sort(ins_indeces.begin(), ins_indeces.end());
+			for (unsigned long j = 0; j < ins_indeces.size(); j++){
+				outfile<<chrom<<','<<genome[chrom][ins_indeces[j]]<<',';
+				genome[chrom].insert(
+					genome[chrom].begin() + ins_indeces[j], 
+					random_snp(genome[chrom][ins_indeces[j]])
+				);
+				// genome[chrom][ins_indeces[j]] = 'i';
+				outfile<<genome[chrom][ins_indeces[j]]<<','<<ins_indeces[j]<<'\n';
+			}
+		}
+		if (!args.quiet)
+			cout<<"Generating Deletes..."<<endl;
+		outfile<<">DELETE\n";
+		for (unsigned int chrom = 0; chrom < genome.size(); chrom++){
+			if (!args.quiet)
+				cout<<"\tChromosome "<<chrom<<endl;
+			unsigned long num_deletes = 
+				(genome[chrom].size() * args.indel_rate) / 2;
+			vector<unsigned long> del_indeces(num_deletes);
+			for (unsigned long j = 0; j < num_deletes; j++){
+				unsigned long index = random() * genome[chrom].size();
+				del_indeces[j] = index;
+			}
+			sort(del_indeces.begin(), del_indeces.end());
+			for (unsigned long j = 0; j < del_indeces.size(); j++){
+				outfile<<chrom<<','<<genome[chrom][del_indeces[j]]<<',';
+				genome[chrom].erase(genome[chrom].begin() + del_indeces[j]);
+				// genome[chrom][del_indeces[j]] = 'd';
+				outfile<<genome[chrom][del_indeces[j]]<<','<<del_indeces[j]<<'\n';
+			}
+
+		}
 	}
+	outfile.close();
 }
 
-void generate_insertions(vector<char>& chromosome){
-	// TODO
-}
-
-void generate_deletions(vector<char>& chromosome){
-	// TODO
-}
-
-void generate_snps(vector<char>& chromosome){
-	const float SNP_RATE = 0.003; // 0.3%
-	const unsigned long NUM_SNPS = 
-		(unsigned long)(chromosome.size() * SNP_RATE);
-	if (!args.quiet)
-		cout<<"\tGenerating SNPs..."<<endl;
-	for (unsigned long i = 0; i < NUM_SNPS; i++){
-		unsigned long index = random() * args.chrom_size;
-		chromosome[index] = random_snp(chromosome[index]);
+void generate_snps(vector<vector<char>>& genome){
+	ofstream outfile((char*)ans_file_name.c_str(), ios::app);
+	if (outfile.is_open()){
+		if (!args.quiet)
+			cout<<"Generating SNPs..."<<endl;
+		outfile<<">SNP\n";
+		for (unsigned int chrom = 0; chrom < genome.size(); chrom++){
+			if (!args.quiet)
+				cout<<"\tChromosome "<<chrom<<endl;
+			unsigned long num_snps = genome[chrom].size() * args.snp_rate;
+			vector<unsigned long> rand_indeces(num_snps);
+			for (unsigned long j = 0; j < rand_indeces.size(); j++){
+				rand_indeces[j] = random() * genome[chrom].size();
+			}
+			sort(rand_indeces.begin(), rand_indeces.end());
+			for (unsigned long j = 0; j < rand_indeces.size(); j++){
+				outfile<<chrom<<','<<genome[chrom][rand_indeces[j]]<<',';
+				genome[chrom][rand_indeces[j]] = 
+					random_snp(genome[chrom][rand_indeces[j]]);
+				// genome[chrom][rand_indeces[j]] = 'snp';
+				outfile<<genome[chrom][rand_indeces[j]]<<','<<rand_indeces[j]<<'\n';
+			}
+		}
 	}
+	outfile.close();
 }
 
 string get_garbage_read(){
@@ -433,6 +520,7 @@ double random(){
 
 }; //end namespace
 
+
 int main(int argc, char** argv){	
   	parse_args(argc, argv);
   	srand(time(NULL));
@@ -443,22 +531,10 @@ int main(int argc, char** argv){
 	}
 
   	write_ref_genome(genome);
-  	// generate_mutations(genome);
+  	generate_mutations(genome);
   	write_private_genome(genome);
   	write_reads(genome);
-
-  	// const unsigned long ITERATIONS = 1000000000;
-  	// double rand_num;
-  	// ranlux48_base engine;
-  	// uniform_int_distribution<unsigned long> generator(0ul, 3000000000ul);
-  	// // normal_distribution<double> generator(5, 3);
-  	// // cout<<"mean: "<<generator.mean()<<endl;
-  	// // cout<<"sdev: "<<generator.stddev()<<endl;
-  	// for (unsigned long i = 0; i < ITERATIONS; i++){
-  	// 	// rand_num = genome_gen::random() * 3000000000;
-  	// 	rand_num = generator(engine);
-  	// 	// cout<<rand_num<<endl;
-  	// }
+  	cout<<"DONE"<<endl;
 
 	return 0;
 }

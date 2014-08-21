@@ -1,3 +1,4 @@
+#pragma once
 #ifndef __GENOME_GEN__
 #define __GENOME_GEN__
 
@@ -17,13 +18,12 @@ void write_private_genome(vector<vector<char>>& genome);
 void write_reads(char** genome);
 
 void generate_mutations(vector<vector<char>>& genome);
-void generate_insertions(vector<char>& chromosome);
-void generate_deletions(vector<char>& chromosome);
-void generate_snps(vector<char>& chromosome);
-// void generate_copies(vector<char>& chromosome);
-// void generate_inversions(vector<char>& chromosome);
-// void generate_alus(vector<char>& chromosome);
-// void generate_strs(vector<char>& chromosome);
+void generate_indels(vector<vector<char>>& genome);
+void generate_snps(vector<vector<char>>& genome);
+// void generate_copies(vector<vector<char>>& genome);
+// void generate_inversions(vector<vector<char>>& genome);
+// void generate_alus(vector<vector<char>>& genome);
+// void generate_strs(vector<vector<char>>& genome);
 
 string get_garbage_read();
 string get_slice(int chromosome, 

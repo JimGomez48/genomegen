@@ -3,3 +3,6 @@ all:
 
 clean:
 	rm --force genomegen *.tab.* *.o *.lo test *.so*
+
+cleantext:
+	rm --force *.txt
