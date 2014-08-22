@@ -7,8 +7,6 @@
 #include <vector>
 #include <algorithm>
 #include <tuple>
-// #include <utility>
-// #include <random>
 
 #include "genomegen.hpp"
 #include "tclap/CmdLine.h"
@@ -16,10 +14,10 @@
 using namespace std;
 using namespace genome_gen;
 
-namespace genome_gen{
+namespace genome_gen {
 
 static const string REF_PRE = "ref_";
-static const string PRIV_PRE = "private_";
+static const string PRIV_PRE = "priv_";
 static const string READS_PRE = "reads_";
 static const string ANS_PRE = "ans_";
 static const string SUFFIX = ".txt";
@@ -327,10 +325,9 @@ void write_reads(vector<vector<char>>& genome){
 			unsigned long index1 = (unsigned long)
 				(random()*(genome[chrom_num].size() - gap - 2*args.read_length));
 			unsigned long index2 = index1 + args.read_length + gap;
-			if (random() <= args.read_garbage_rate){
+			
+			if (random() <= args.read_garbage_rate)
 				read1 = get_garbage_read();	
-				// read1 = "garbage";	
-			}
 			else{
 				read1 = get_slice(
 					chrom_num, index1, 
@@ -339,16 +336,13 @@ void write_reads(vector<vector<char>>& genome){
 				);
 				// introduce errors
 				for (unsigned int i = 0; i < read1.size(); i++){
-					if (random() < args.read_error_rate){
-						// read1[i] = random_snp(read[i]);
-						read1[i] = '~';
-					}
+					if (random() < args.read_error_rate)
+						read1[i] = random_snp(read1[i]);
 				}
 			}
-			if (random() <= args.read_garbage_rate){
+			
+			if (random() <= args.read_garbage_rate)
 				read2 = get_garbage_read();	
-				// read2 = "garbage";
-			}
 			else{
 				read2 = get_slice(
 					chrom_num, index2,
@@ -357,17 +351,14 @@ void write_reads(vector<vector<char>>& genome){
 				);
 				// introduce errors
 				for (unsigned int i = 0; i < read2.size(); i++){
-					if (random() < args.read_error_rate){
+					if (random() < args.read_error_rate)
 						read2[i] = random_snp(read2[i]);
-						// read2[i] = '~';
-					}
 				}
 			}
 			outfile<<read1<<','<<read2<<'\n';
 		}
 	}
 	outfile.close();
-	remove(".temp");
 }
 
 void generate_mutations(vector<vector<char>>& genome){
@@ -380,62 +371,7 @@ void generate_mutations(vector<vector<char>>& genome){
 	generate_snps(genome);
 }
 
-/*void generate_indels(vector<vector<char>>& genome){
-	ofstream outfile((char*)ans_file_name.c_str(), ios::app);
-	if (outfile.is_open()){
-		unsigned long num_indels = args.genome_size * args.indel_rate;
-		if (!args.quiet)
-			cout<<"Generating Inserts..."<<endl;
-		outfile<<">INSERT\n";
-		for (unsigned int chrom = 0; chrom < genome.size(); chrom++){
-			if (!args.quiet)
-				cout<<"\tChromosome "<<chrom<<endl;
-			unsigned long num_inserts = num_indels / 2;
-				// (genome[chrom].size() * args.indel_rate) / 2;
-			vector<unsigned long> ins_indeces(num_inserts);
-			for (unsigned long j = 0; j < num_inserts; j++){
-				unsigned long index = random() * (genome[chrom].size() - 1);
-				ins_indeces[j] = index;
-			}
-			sort(ins_indeces.begin(), ins_indeces.end());
-			for (unsigned long j = 0; j < ins_indeces.size(); j++){
-				outfile<<chrom<<','<<genome[chrom][ins_indeces[j]]<<',';
-				genome[chrom].insert(
-					genome[chrom].begin() + ins_indeces[j], random_allele());
-				// genome[chrom][ins_indeces[j]] = 'i';
-				outfile<<genome[chrom][ins_indeces[j]]<<','<<ins_indeces[j]<<'\n';
-			}
-		}
-		if (!args.quiet)
-			cout<<"Generating Deletes..."<<endl;
-		outfile<<">DELETE\n";
-		for (unsigned int chrom = 0; chrom < genome.size(); chrom++){
-			if (!args.quiet)
-				cout<<"\tChromosome "<<chrom<<endl;
-			unsigned long num_deletes = num_indels / 2;
-				// (genome[chrom].size() * args.indel_rate) / 2;
-			vector<unsigned long> del_indeces(num_deletes);
-			for (unsigned long j = 0; j < del_indeces.size(); j++){
-				unsigned long index = random() * (genome[chrom].size() - 1);
-				del_indeces[j] = index;
-			}
-			sort(del_indeces.begin(), del_indeces.end());
-			for (unsigned long j = 0; j < del_indeces.size(); j++){
-				outfile<<chrom<<','<<genome[chrom][del_indeces[j]]<<',';
-				if (del_indeces[j] >= genome[chrom].size())
-					genome[chrom].erase(genome[chrom].end() - 1);
-				else
-					genome[chrom].erase(genome[chrom].begin() + del_indeces[j]);
-				// genome[chrom][del_indeces[j]] = 'd';
-				outfile<<genome[chrom][del_indeces[j]]<<','<<del_indeces[j]<<'\n';
-			}
-
-		}
-	}
-	outfile.close();
-}*/
-
-// tuple(chrom_num, index, indel_length)
+// 			  chrom_num,   	index, 		   indel_length
 typedef tuple<unsigned int, unsigned long, unsigned short> indel_tuple; 
 bool indel_tuple_comparator(indel_tuple a, indel_tuple b){
 	if (get<0>(a) < get<0>(b))
@@ -454,7 +390,6 @@ void generate_indels(vector<vector<char>>& genome){
 	
 	// generate insert/delete indeces
 	unsigned long num_indels = args.genome_size * args.indel_rate;
-	// (chrom, index , length)
 	vector<indel_tuple> inserts(num_indels / 2);
 	vector<indel_tuple> deletes(num_indels / 2);
 	if (!args.quiet)
@@ -473,7 +408,7 @@ void generate_indels(vector<vector<char>>& genome){
 	sort(inserts.begin(), inserts.end(), indel_tuple_comparator);
 	sort(deletes.begin(), deletes.end(), indel_tuple_comparator);
 
-	// write random inserts/deletes to file
+	// write random inserts/deletes to file and in-memory genome
 	ofstream outfile((char*)ans_file_name.c_str(), ios::app);
 	if (outfile.is_open()){
 		if (!args.quiet)
@@ -489,7 +424,6 @@ void generate_indels(vector<vector<char>>& genome){
 				alleles.end()
 			);
 			outfile<<chrom<<','<<alleles<<','<<index<<'\n';
-			// outfile<<chrom<<','<<"test"<<','<<index<<'\n';
 		}
 
 		if (!args.quiet)
@@ -509,7 +443,6 @@ void generate_indels(vector<vector<char>>& genome){
 			vector<char>::iterator end = genome[chrom].begin() + index + length;
 			genome[chrom].erase(start, end);
 			outfile<<chrom<<','<<alleles<<','<<index<<'\n';
-			// outfile<<chrom<<','<<"test"<<','<<index<<'\n';
 		}
 	}
 	outfile.close();
@@ -534,7 +467,6 @@ void generate_snps(vector<vector<char>>& genome){
 				outfile<<chrom<<','<<genome[chrom][rand_indeces[j]]<<',';
 				genome[chrom][rand_indeces[j]] = 
 					random_snp(genome[chrom][rand_indeces[j]]);
-				// genome[chrom][rand_indeces[j]] = '#';
 				outfile<<genome[chrom][rand_indeces[j]]<<','<<rand_indeces[j]<<'\n';
 			}
 		}
