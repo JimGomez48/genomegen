@@ -335,7 +335,7 @@ void write_reads(vector<vector<char>>& genome){
 				read1 = get_slice(
 					chrom_num, index1, 
 					index1 + args.read_length, 
-					genome[chrom_num]
+					genome
 				);
 				// introduce errors
 				for (unsigned int i = 0; i < read1.size(); i++){
@@ -353,7 +353,7 @@ void write_reads(vector<vector<char>>& genome){
 				read2 = get_slice(
 					chrom_num, index2,
 					index2 + args.read_length,
-					genome[chrom_num]
+					genome
 				);
 				// introduce errors
 				for (unsigned int i = 0; i < read2.size(); i++){
@@ -435,17 +435,26 @@ void generate_mutations(vector<vector<char>>& genome){
 	outfile.close();
 }*/
 
+// tuple(chrom_num, index, indel_length)
+typedef tuple<unsigned int, unsigned long, unsigned short> indel_tuple; 
+bool indel_tuple_comparator(indel_tuple a, indel_tuple b){
+	if (get<0>(a) < get<0>(b))
+		return true;
+	if (get<0>(a) == get<0>(b))
+		return get<1>(a) < get<1>(b);
+	return false;
+}
+
 void generate_indels(vector<vector<char>>& genome){
 	const unsigned short INDEL_MAX_LENGTH = 5;
+	enum {CHROM, INDEX, INDEL_LENGTH};
+
 	if (!args.quiet)
 		cout<<"Generating Indels..."<<endl;
 	
 	// generate insert/delete indeces
 	unsigned long num_indels = args.genome_size * args.indel_rate;
-	// vector<pair<unsigned int, unsigned long>> inserts(num_indels / 2);
-	// vector<pair<unsigned int, unsigned long>> deletes(num_indels / 2);
 	// (chrom, index , length)
-	typedef tuple<unsigned int, unsigned long, unsigned short> indel_tuple; 
 	vector<indel_tuple> inserts(num_indels / 2);
 	vector<indel_tuple> deletes(num_indels / 2);
 	if (!args.quiet)
@@ -455,36 +464,52 @@ void generate_indels(vector<vector<char>>& genome){
 	unsigned short indel_length;
 	for (unsigned long i = 0; i < num_indels / 2; i++){
 		chrom = rand() % genome.size();
-		index = random() * (genome.size() - 1);
-		indel_length = rand() % INDEL_MAX_LENGTH;
-		// inserts[i] = pair<unsigned int, unsigned long> (chrom, index);
+		index = random() * (genome[chrom].size() - 1);
+		indel_length = (rand() % INDEL_MAX_LENGTH) + 1;
 		inserts[i] = make_tuple(chrom, index, indel_length);
-		index = random() * (genome.size() - 1);
-		// deletes[i] = pair<unsigned int, unsigned long> (chrom, index);
+		index = random() * (genome[chrom].size() - 1);
 		deletes[i] = make_tuple(chrom, index, indel_length);
 	}
+	sort(inserts.begin(), inserts.end(), indel_tuple_comparator);
+	sort(deletes.begin(), deletes.end(), indel_tuple_comparator);
 
 	// write random inserts/deletes to file
 	ofstream outfile((char*)ans_file_name.c_str(), ios::app);
 	if (outfile.is_open()){
 		if (!args.quiet)
 			cout<<"\twriting inserts..."<<endl;
+		outfile<<">INSERT\n";
 		for (unsigned long i = 0; i < inserts.size(); i++){
-			// unsigned int chrom = inserts[i].first;
-			unsigned int chrom = get<0>(inserts[i]);
-			// unsigned long index = inserts[i].second;
-			unsigned long index = get<1>(inserts[i]);
-			string alleles = random_alleles(get<2>(inserts[i]));
-			// genome[chrom].insert(
-			// 	genome[chrom].begin() + index, alleles.begin(), alleles.end());
+			const unsigned int chrom = get<CHROM>(inserts[i]);
+			const unsigned long index = get<INDEX>(inserts[i]);
+			const string alleles = random_alleles(get<INDEL_LENGTH>(inserts[i]));
 			genome[chrom].insert(
-				genome[chrom].begin() + index, alleles.begin(), alleles.end());
+				genome[chrom].begin() + index, 
+				alleles.begin(), 
+				alleles.end()
+			);
+			outfile<<chrom<<','<<alleles<<','<<index<<'\n';
+			// outfile<<chrom<<','<<"test"<<','<<index<<'\n';
 		}
 
 		if (!args.quiet)
 				cout<<"\twriting deletes..."<<endl;
+		outfile<<">DELETE\n";
 		for (unsigned long i = 0; i < deletes.size(); i++){
-			;
+			const unsigned int chrom = get<CHROM>(deletes[i]);
+			const unsigned long index = get<INDEX>(deletes[i]);
+			const unsigned short length = get<INDEL_LENGTH>(deletes[i]);
+			const string alleles = get_slice(
+				chrom, 
+				index, 
+				index + length,
+				genome
+			);
+			vector<char>::iterator start = genome[chrom].begin() + index;
+			vector<char>::iterator end = genome[chrom].begin() + index + length;
+			genome[chrom].erase(start, end);
+			outfile<<chrom<<','<<alleles<<','<<index<<'\n';
+			// outfile<<chrom<<','<<"test"<<','<<index<<'\n';
 		}
 	}
 	outfile.close();
@@ -507,9 +532,9 @@ void generate_snps(vector<vector<char>>& genome){
 			sort(rand_indeces.begin(), rand_indeces.end());
 			for (unsigned long j = 0; j < rand_indeces.size(); j++){
 				outfile<<chrom<<','<<genome[chrom][rand_indeces[j]]<<',';
-				// genome[chrom][rand_indeces[j]] = 
-				// 	random_snp(genome[chrom][rand_indeces[j]]);
-				genome[chrom][rand_indeces[j]] = '#';
+				genome[chrom][rand_indeces[j]] = 
+					random_snp(genome[chrom][rand_indeces[j]]);
+				// genome[chrom][rand_indeces[j]] = '#';
 				outfile<<genome[chrom][rand_indeces[j]]<<','<<rand_indeces[j]<<'\n';
 			}
 		}
@@ -526,11 +551,11 @@ string get_garbage_read(){
 }
 
 string get_slice(int chromosome, 
-	unsigned long start, unsigned long end, const vector<char>& genome)
+	unsigned long start, unsigned long end, const vector<vector<char>>& genome)
 {
 	string slice = "";
 	for (unsigned long i = start; i < end; i++){
-		slice += genome[i];
+		slice += genome[chromosome][i];
 	}
 	return string(slice);
 }
