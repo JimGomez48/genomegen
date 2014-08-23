@@ -43,6 +43,7 @@ class TestGenomeGen(TestCase):
         SEQUENCE = 1
         INDEX = 2
         with open(self.ANS_FILE, mode='r', buffering=1) as ans_file:
+            # seek up until the INSERT tag
             while 1:
                 line = ans_file.readline()
                 if not line:
@@ -51,12 +52,28 @@ class TestGenomeGen(TestCase):
                     line = ans_file.readline()
                     break
 
+            iter = 0
             while line:
                 if '>' in line:
                     break
                 tokens = line.rstrip().split(',')
-                print tokens
+                chrom = int(tokens[CHROM])
+                ans_insert = str(tokens[SEQUENCE])
+                index = int(tokens[INDEX])
+
+                ref_prefix = ''.join(self.ref_genome[chrom][index-5: index])
+                ref_suffix = ''.join(self.ref_genome[chrom][index: index+5])
+                priv_prefix = ''.join(self.priv_genome[chrom][index - 5: index])
+                priv_insert = ''.join(self.priv_genome[chrom][index: index + len(ans_insert)])
+                priv_suffix = ''.join(self.priv_genome[chrom][index + len(ans_insert): index + len(ans_insert) + 5])
+
+                print 'ans: ' + ans_insert + '  priv: ' + priv_insert
+                # self.assertEquals(ref_prefix, priv_prefix, 'iter:' + str(iter) + ' ' + ref_prefix + '!=' + priv_prefix)
+                self.assertEquals(ans_insert, priv_insert, 'iter:' + str(iter) + ' ' + ans_insert + '!=' + priv_insert)
+                # self.assertEquals(ref_suffix, priv_suffix, 'iter:' + str(iter) + ' ' + ref_suffix + '!=' + priv_suffix)
+
                 line = ans_file.readline()
+                iter += 1
 
 
     @unittest.skip('')
