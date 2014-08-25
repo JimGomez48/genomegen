@@ -336,8 +336,22 @@ void write_reads(vector<vector<char>>& genome){
 	if (args.coverage && args.genome_size){
 		if (!args.quiet)
 			cout<<"Generating reads..."<<endl;
+		
+		if (!args.quiet)
+			cout<<"\tremoving place holders from mutated genome..."<<endl;
+		for (unsigned int chrom = 0; chrom < genome.size(); chrom++){
+			vector<char>::iterator i;
+			for (i = genome[chrom].begin(); i < genome[chrom].end(); i++){
+				if ((*i) == DEL_MARKER){
+					i = genome[chrom].erase(i) - 1;
+				}
+			}
+		}
+
 		ofstream outfile((char*)reads_file_name.c_str());
 		if (outfile.is_open()){
+			if (!args.quiet)
+				cout<<"\twriting reads from mutated genome..."<<endl;
 			outfile<<'>'<<args.genome_id<<'\n';
 			// generate reads from genome
 			unsigned long num_reads = 
