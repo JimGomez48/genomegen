@@ -67,7 +67,7 @@ class TestGenomeGen(TestCase):
                 priv_insert = ''.join(self.priv_genome[chrom][index: index + len(ans_insert)])
                 priv_suffix = ''.join(self.priv_genome[chrom][index + len(ans_insert): index + len(ans_insert) + 5])
 
-                print 'ans: ' + ans_insert + '  priv: ' + priv_insert
+                # print 'ans: ' + ans_insert + '  priv: ' + priv_insert
                 # self.assertEquals(ref_prefix, priv_prefix, 'iter:' + str(iter) + ' ' + ref_prefix + '!=' + priv_prefix)
                 self.assertEquals(ans_insert, priv_insert, 'iter:' + str(iter) + ' ' + ans_insert + '!=' + priv_insert)
                 # self.assertEquals(ref_suffix, priv_suffix, 'iter:' + str(iter) + ' ' + ref_suffix + '!=' + priv_suffix)

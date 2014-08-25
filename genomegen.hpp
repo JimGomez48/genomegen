@@ -18,7 +18,8 @@ void write_private_genome(vector<vector<char>>& genome);
 void write_reads(char** genome);
 
 void generate_mutations(vector<vector<char>>& genome);
-void generate_indels(vector<vector<char>>& genome);
+void generate_deletes(vector<vector<char>>& genome);
+void generate_inserts(vector<vector<char>>& genome);
 void generate_snps(vector<vector<char>>& genome);
 // void generate_copies(vector<vector<char>>& genome);
 // void generate_inversions(vector<vector<char>>& genome);
