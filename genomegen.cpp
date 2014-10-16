@@ -7,6 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <tuple>
+#include <iomanip>
 
 #include "genomegen.hpp"
 #include "tclap/CmdLine.h"
@@ -438,8 +439,9 @@ void generate_indels(vector<vector<char>>& genome){
 		vector<indel_tuple> inserts(num_inserts);
 		vector<indel_tuple> deletes(num_deletes);
 		if (!args.quiet)
-			cout<<"\tmutating genome..."<<endl;
+			cout<<"\tmutating genome...\n";
 		for (unsigned long i = 0; i < num_indels / 2; i++){
+			// cout<<'\r';
 			const unsigned int length = (rand() % INDEL_MAX_LENGTH) + 1;
 			unsigned int chrom = rand() % genome.size();
 			// delete slice and replace with dummies
@@ -487,7 +489,10 @@ void generate_indels(vector<vector<char>>& genome){
 			}
 			inserts[i] = make_tuple(chrom, ins_index, ins_alleles);
 			deletes[i] = make_tuple(chrom, del_index, del_alleles);
+			cout<<setw(4)<<setprecision(3)<<
+				"\r\t"<<(200 * (float)(i / (float)num_indels))<<"%"; 
 		}
+		cout<<endl;
 		sort(inserts.begin(), inserts.end(), indel_tuple_compare);
 		sort(deletes.begin(), deletes.end(), indel_tuple_compare);
 
@@ -502,7 +507,7 @@ void generate_indels(vector<vector<char>>& genome){
 			const unsigned int chrom = get<CHROM>((*i));
 			const unsigned long index = get<INDEX>((*i));
 			const string alleles = get<ALLELES>((*i));
-			outfile<<chrom<<','<<alleles<<','<<index<<'\n';
+			outfile/*<<chrom<<','*/<<alleles<<','<<index<<'\n';
 		}
 
 		// write deletes to file
@@ -514,7 +519,7 @@ void generate_indels(vector<vector<char>>& genome){
 			const unsigned int chrom = get<CHROM>((*d));
 			const unsigned long index = get<INDEX>((*d));
 			const string alleles = get<ALLELES>((*d));
-			outfile<<chrom<<','<<alleles<<','<<index<<'\n';
+			outfile/*<<chrom<<','*/<<alleles<<','<<index<<'\n';
 		}
 		outfile.close();
 	}
@@ -555,7 +560,7 @@ void generate_snps(vector<vector<char>>& genome){
 					const char old = get<OLD>((*i));
 					const char snp = get<NEW>((*i));
 					const unsigned long index = get<INDEX>((*i));
-					outfile<<chrom<<','<<old<<','<<snp<<','<<index<<'\n';
+					outfile/*<<chrom<<','*/<<old<<','<<snp<<','<<index<<'\n';
 				}
 			}
 		}
