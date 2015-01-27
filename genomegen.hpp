@@ -14,18 +14,12 @@ void parse_args(int argc, char** argv);
 void print_args();
 
 void write_ref_genome(vector<vector<char>>& genome);
-void write_private_genome(vector<vector<char>>& genome);
+void write_donor_genome(vector<vector<char>>& genome);
 void write_reads(char** genome);
 
 void generate_mutations(vector<vector<char>>& genome);
 void generate_indels(vector<vector<char>>& genome);
-// void generate_deletes(vector<vector<char>>& genome);
-// void generate_inserts(vector<vector<char>>& genome);
 void generate_snps(vector<vector<char>>& genome);
-// void generate_copies(vector<vector<char>>& genome);
-// void generate_inversions(vector<vector<char>>& genome);
-// void generate_alus(vector<vector<char>>& genome);
-// void generate_strs(vector<vector<char>>& genome);
 
 string get_garbage_read();
 string get_slice(

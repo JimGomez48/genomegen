@@ -4,3 +4,5 @@ genomegen
 *.lo
 *.o
 *.txt
+*.zip
+

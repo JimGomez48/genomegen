@@ -19,7 +19,7 @@ using namespace genome_gen;
 namespace genome_gen {
 
 static const string REF_PRE = "ref_";
-static const string PRIV_PRE = "priv_";
+static const string PRIV_PRE = "donor_";
 static const string READS_PRE = "reads_";
 static const string ANS_PRE = "ans_";
 static const string SUFFIX = ".txt";
@@ -40,8 +40,6 @@ struct cmd_args{
 	double read_garbage_rate;
 	double snp_rate;
 	double indel_rate;
-	// double insert_rate;
-	// double delete_rate;
 } args;
 
 string ref_file_name;
@@ -59,7 +57,7 @@ void parse_args(int argc, char** argv){
 			"generated genomic data is written to the following set of files: "
 			"\n1) reference genome \'ref_<genome_id>.txt\'\n2) mutated donor "
 			"genome \'private_<genome_id>.txt\'\n3) paired-end reads "
-            "\'reads_<genome_id>.txt\' from donor genome\n4) mutation answer "
+			"\'reads_<genome_id>.txt\' from donor genome\n4) mutation answer "
 			"key \'ans_<genome_id>.txt\'", 
 			' '
 		);
@@ -77,17 +75,17 @@ void parse_args(int argc, char** argv){
 			"genome1",
 			"string"
 		);
-		TCLAP::UnlabeledValueArg<unsigned int> num_chroms(
-			"num-chromosomes",
-			"Num-Chromosomes: The number of chromosomes to generate for the "
-			"genome",
-			true,
-			1,
-			"int"
-		);
+		// TCLAP::UnlabeledValueArg<unsigned int> num_chroms(
+		// 	"num-chromosomes",
+		// 	"Num-Chromosomes: The number of chromosomes to generate for the "
+		// 	"genome",
+		// 	true,
+		// 	1,
+		// 	"int"
+		// );
 		TCLAP::UnlabeledValueArg<double> chrom_size(
-			"chromosome-size",
-			"Chromosome-Size: The size of each chromosome, by default in "
+			"genome-size",
+			"Genome-Size: The size of the genome, by default in "
 			"thousands of bp. (Change scale with -s option)",
 			true,
 			1,
@@ -162,27 +160,11 @@ void parse_args(int argc, char** argv){
 			0.001,
 			"float"
 		);
-		// TCLAP::ValueArg<double> insert_rate(
-		// 	"", "insert",
-		// 	"The rate at which inserts will be introduced into the mutated "
-		// 	"genome. Default: 0.001",
-		// 	false,
-		// 	0.001,
-		// 	"float"
-		// );
-		// TCLAP::ValueArg<double> delete_rate(
-		// 	"", "delete",
-		// 	"The rate at which deletes will be introduced into the mutated "
-		// 	"genome. Default: 0.001",
-		// 	false,
-		// 	0.001,
-		// 	"float"
-		// );
 
 		// bind args to parser and parse
 		cmd.add(quiet);
 		cmd.add(genome_id);
-		cmd.add(num_chroms);
+		// cmd.add(num_chroms);
 		cmd.add(chrom_size);
 		cmd.add(scale);
 		cmd.add(coverage);
@@ -192,8 +174,6 @@ void parse_args(int argc, char** argv){
 		cmd.add(read_garbage_rate);
 		cmd.add(snp_rate);
 		cmd.add(indel_rate);
-		// cmd.add(insert_rate);
-		// cmd.add(delete_rate);
 		cmd.parse(argc, argv);
 		if (coverage.getValue() < 0)
 			throw TCLAP::ArgParseException("value cannot be < 0", "coverage");
@@ -205,44 +185,39 @@ void parse_args(int argc, char** argv){
 			throw TCLAP::ArgParseException("out of valid range: [0, 1]", "snp");
 		if (indel_rate.getValue() < 0 || indel_rate.getValue() > 1)
 			throw TCLAP::ArgParseException("out of valid range: [0, 1]", "indel");
-		// if (insert_rate.getValue() < 0 || insert_rate.getValue() > 1)
-		// 	throw TCLAP::ArgParseException("out of valid range: [0, 1]", "insert");
-		// if (delete_rate.getValue() < 0 || delete_rate.getValue() > 1)
-		// 	throw TCLAP::ArgParseException("out of valid range: [0, 1]", "delete");
 
     	// determine scale factor
-    	double factor;
-    	switch(scale.getValue()){
-    		case 'k': factor = 1000; break;
-    		case 'm': factor = 1000000; break;
-    		case 'b': factor = 1000000000; break;
-    	}
+		double factor;
+		switch(scale.getValue()){
+			case 'k': factor = 1000; break;
+			case 'm': factor = 1000000; break;
+			case 'b': factor = 1000000000; break;
+		}
 
     	// save arg values in global struct
-		args.quiet 				= quiet.getValue();
-		args.genome_id 			= genome_id.getValue();
-		args.num_chroms 		= num_chroms.getValue();
-		args.chrom_size 		= factor * chrom_size.getValue();
-		args.scale 				= scale.getValue();
-		args.coverage 			= coverage.getValue();
-		args.read_length 		= read_length.getValue();
-		args.read_gap 			= read_gap.getValue();
-		args.read_error_rate 	= read_error_rate.getValue();
+		args.quiet 							= quiet.getValue();
+		args.genome_id 					= genome_id.getValue();
+		// args.num_chroms 				= num_chroms.getValue();
+		args.num_chroms 				= 1;
+		args.chrom_size 				= factor * chrom_size.getValue();
+		args.scale 							= scale.getValue();
+		args.coverage 					= coverage.getValue();
+		args.read_length 				= read_length.getValue();
+		args.read_gap 					= read_gap.getValue();
+		args.read_error_rate 		= read_error_rate.getValue();
 		args.read_garbage_rate 	= read_garbage_rate.getValue();
-    	args.genome_size 		= args.chrom_size * args.num_chroms;
-    	args.snp_rate 			= snp_rate.getValue();
-    	args.indel_rate 		= indel_rate.getValue();
-    	// args.insert_rate 		= args.indel_rate / 2.0;
-    	// args.delete_rate 		= args.indel_rate / 2.0;
+		args.genome_size 				= args.chrom_size * args.num_chroms;
+		args.snp_rate 					= snp_rate.getValue();
+		args.indel_rate 				= indel_rate.getValue();
 
     	// set file names
-    	ref_file_name = REF_PRE + args.genome_id + SUFFIX;
-    	priv_file_name = PRIV_PRE + args.genome_id + SUFFIX;
-    	reads_file_name = READS_PRE + args.genome_id + SUFFIX;
-    	ans_file_name = ANS_PRE + args.genome_id + SUFFIX;
-    	
-    	if (!args.quiet)
-    		print_args();
+		ref_file_name = REF_PRE + args.genome_id + SUFFIX;
+		priv_file_name = PRIV_PRE + args.genome_id + SUFFIX;
+		reads_file_name = READS_PRE + args.genome_id + SUFFIX;
+		ans_file_name = ANS_PRE + args.genome_id + SUFFIX;
+
+		if (!args.quiet)
+			print_args();
 	}
 	catch(TCLAP::ArgException &e){
 		if (!args.quiet)
@@ -254,28 +229,28 @@ void parse_args(int argc, char** argv){
 void print_args(){
 	cout<<"================================="<<endl;
 	cout<<"genome-ID:\t"<<args.genome_id<<endl;
-	cout<<"num-chroms:\t"<<args.num_chroms<<endl;
+	// cout<<"num-chroms:\t"<<args.num_chroms<<endl;
+	// switch(args.scale){
+	// 	case 'k': 
+	// 	cout<<"chrom-size:\t"<<args.chrom_size / 1000.0<<"-thousand bp"
+	// 	<<endl; break;
+	// 	case 'm': 
+	// 	cout<<"chrom-size:\t"<<args.chrom_size / 1000000.0<<"-million bp"
+	// 	<<endl; break;
+	// 	case 'b': 
+	// 	cout<<"chrom-size:\t"<<args.chrom_size / 1000000000.0<<"-billion bp"
+	// 	<<endl; break;
+	// }
 	switch(args.scale){
 		case 'k': 
-			cout<<"chrom-size:\t"<<args.chrom_size / 1000.0<<"-thousand bp"
-			<<endl; break;
+		cout<<"genome-size:\t"<<args.genome_size / 1000.0<<"-thousand bp"
+		<<endl; break;
 		case 'm': 
-			cout<<"chrom-size:\t"<<args.chrom_size / 1000000.0<<"-million bp"
-			<<endl; break;
+		cout<<"genome-size:\t"<<args.genome_size / 1000000.0<<"-million bp"
+		<<endl; break;
 		case 'b': 
-			cout<<"chrom-size:\t"<<args.chrom_size / 1000000000.0<<"-billion bp"
-			<<endl; break;
-	}
-	switch(args.scale){
-		case 'k': 
-			cout<<"genome-size:\t"<<args.genome_size / 1000.0<<"-thousand bp"
-			<<endl; break;
-		case 'm': 
-			cout<<"genome-size:\t"<<args.genome_size / 1000000.0<<"-million bp"
-			<<endl; break;
-		case 'b': 
-			cout<<"genome-size:\t"<<args.genome_size / 1000000000.0<<
-			"-billion bp"<<endl; break;
+		cout<<"genome-size:\t"<<args.genome_size / 1000000000.0<<
+		"-billion bp"<<endl; break;
 	}
 	cout<<"coverage:\t"<<args.coverage<<'x'<<endl;
 	cout<<"read-length:\t"<<args.read_length<<" bp"<<endl;
@@ -284,8 +259,6 @@ void print_args(){
 	cout<<"garbage-rate:\t"<<args.read_garbage_rate<<endl;
 	cout<<"snp-rate:\t"<<args.snp_rate<<endl;
 	cout<<"indel-rate:\t"<<args.indel_rate<<endl;
-	// cout<<"insert-rate:\t"<<args.insert_rate<<endl;
-	// cout<<"delete-rate:\t"<<args.delete_rate<<endl;
 	cout<<"================================="<<endl;
 }
 
@@ -296,49 +269,45 @@ void write_ref_genome(vector<vector<char>>& genome){
 			if (!args.quiet)
 				cout<<"Generating reference genome..."<<endl;
 			outfile<<">" + args.genome_id;
-	    	for (unsigned int i = 0; i < args.num_chroms; i++){
-	    		string chrom_num = static_cast<ostringstream*>( 
-	    			&(ostringstream() << i) )->str();
-	    		outfile<<"\n>chromosome_" + chrom_num;
+			for (unsigned int i = 0; i < args.num_chroms; i++){
+				// string chrom_num = static_cast<ostringstream*>( 
+				// 	&(ostringstream() << i) )->str();
+				// outfile<<"\n>chromosome_" + chrom_num;
 				char base;
-	    		for (unsigned long j = 0; j < args.chrom_size; j++){
-	    			if (j % LINE_WIDTH == 0)
-	    				outfile<<'\n';
-	    			switch(rand() % 4){
-	    				case 0: base = 'A'; break;
-	    				case 1: base = 'C'; break;
-	    				case 2: base = 'G'; break;
-	    				case 3: base = 'T'; break;
-	    			}
-	    			genome[i][j] = base;
-	    			outfile<<base;
-	    		}
-	    	}
-	    	outfile<<"\n";
-	    	outfile.close();
-	  	}
+				for (unsigned long j = 0; j < args.chrom_size; j++){
+					if (j % LINE_WIDTH == 0)
+						outfile<<'\n';
+					switch(rand() % 4){
+						case 0: base = 'A'; break;
+						case 1: base = 'C'; break;
+						case 2: base = 'G'; break;
+						case 3: base = 'T'; break;
+					}
+					genome[i][j] = base;
+					outfile<<base;
+				}
+			}
+			outfile<<"\n";
+			outfile.close();
+		}
 	}
 }
 
-void write_private_genome(vector<vector<char>>& genome){
+void write_donor_genome(vector<vector<char>>& genome){
 	if (args.genome_size){
 		ofstream outfile((char*)priv_file_name.c_str());
 		if (outfile.is_open()){
 			if (!args.quiet)
-				cout<<"Writing private genome..."<<endl;
+				cout<<"Writing donor genome..."<<endl;
 			outfile<<">" + args.genome_id;
 			for (unsigned int chrom = 0; chrom < genome.size(); chrom++){
-				string chrom_num = static_cast<ostringstream*>( 
-	    			&(ostringstream() << chrom) )->str();
-				outfile<<"\n>chromosome_" + chrom_num;
+				// string chrom_num = static_cast<ostringstream*>( 
+				// 	&(ostringstream() << chrom) )->str();
+				// outfile<<"\n>chromosome_" + chrom_num;
 				unsigned long line_pos = 0;
 				for (unsigned long j = 0; j < genome[chrom].size(); j++){
 					if (line_pos % LINE_WIDTH == 0)
 						outfile<<'\n';
-					// if (genome[chrom][j] != DEL_MARKER){
-					// 	outfile<<genome[chrom][j];
-					// 	line_pos++;
-					// }
 					outfile<<genome[chrom][j];
 					line_pos++;
 				}
@@ -500,7 +469,7 @@ void generate_indels(vector<vector<char>>& genome){
 		// write inserts to file
 		if (!args.quiet)
 			cout<<"\twriting insertions to file..."<<endl;
-		outfile<<">INSERT\n";
+		outfile<<">INS\n";
 		enum {CHROM, INDEX, ALLELES};
 		vector<indel_tuple>::iterator i;
 		for (i = inserts.begin(); i < inserts.end(); i++){
@@ -513,7 +482,7 @@ void generate_indels(vector<vector<char>>& genome){
 		// write deletes to file
 		if (!args.quiet)
 			cout<<"\twriting deletions to file..."<<endl;
-		outfile<<">DELETE\n";
+		outfile<<">DEL\n";
 		vector<indel_tuple>::iterator d;
 		for (d = deletes.begin(); d < deletes.end(); d++){
 			const unsigned int chrom = get<CHROM>((*d));
@@ -543,8 +512,8 @@ void generate_snps(vector<vector<char>>& genome){
 			outfile<<">SNP\n";
 			for (unsigned int chrom = 0; chrom < genome.size(); chrom++){
 				unsigned long num_snps = genome[chrom].size() * args.snp_rate;
-				if (!args.quiet)
-					cout<<"\tchrom "<<chrom<<endl;
+				// if (!args.quiet)
+				// 	cout<<"\tchrom "<<chrom<<endl;
 				vector<snp_tuple> snps(num_snps);
 				for (unsigned long j = 0; j < snps.size(); j++){
 					unsigned long index = random() * (genome[chrom].size() - 1);
@@ -655,20 +624,20 @@ bool overlaps(const unsigned long start1, const unsigned int length1,
 
 
 int main(int argc, char** argv){	
-  	parse_args(argc, argv);
-  	srand(time(NULL));
+	parse_args(argc, argv);
+	srand(time(NULL));
 	
-  	vector<vector<char>> genome(args.num_chroms);
+	vector<vector<char>> genome(args.num_chroms);
 	for (unsigned int i = 0; i < args.num_chroms; i++){
 		genome[i] = vector<char>(args.chrom_size);
 	}
 
-  	write_ref_genome(genome);
-  	generate_mutations(genome);
-  	write_private_genome(genome);
-  	write_reads(genome);
-  	if (!args.quiet)
-  		cout<<"DONE"<<endl;
+	write_ref_genome(genome);
+	generate_mutations(genome);
+	write_donor_genome(genome);
+	write_reads(genome);
+	if (!args.quiet)
+		cout<<"DONE"<<endl;
 
 	return 0;
 }
